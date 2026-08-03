@@ -34,11 +34,14 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
 add_custom_target(uninstall
     COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
 )
-set(CPACK_PACKAGE_NAME "hyprscreend")
+set(CPACK_PACKAGE_NAME "hyprscreend-cpp")
+set(CPACK_DEBIAN_PACKAGE_NAME "hyprscreend-cpp")
 set(CPACK_PACKAGE_VENDOR "Nitrux Latinoamericana S.C.")
 set(CPACK_PACKAGE_CONTACT "hello@nxos.org")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Nitrux Hyprland display and power daemon")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "uri_herrera@nxos.org")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "hyprland")
+set(CPACK_DEBIAN_PACKAGE_REPLACES "hyprscreend")
+set(CPACK_DEBIAN_PACKAGE_CONFLICTS "hyprscreend")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 include(CPack)
