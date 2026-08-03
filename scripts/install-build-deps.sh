@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2025-2026 <Nitrux Latinoamericana S.C. <hello@nxos.org>>
+# Copyright 2026 <Nitrux Latinoamericana S.C. <hello@nxos.org>>
 
 
 # -- Exit on errors.
@@ -23,6 +23,5 @@ fi
 $APT_COMMAND update -q
 $APT_COMMAND install -y --no-install-recommends \
     build-essential \
-    checkinstall \
     cmake \
     dpkg-dev
