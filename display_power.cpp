@@ -44,7 +44,7 @@ std::vector<Monitor> hyprland_monitors() {
     const std::regex name_re("\"name\"[ \\t]*:[ \\t]*\"([^\"]+)\"");
     for (const auto& object : json_objects(command("hyprctl monitors -j 2>/dev/null"))) {
         std::smatch match; if (!std::regex_search(object, match, name_re)) continue;
-        Monitor monitor{}; monitor.name = match[1].str(); monitor.modes = modes_in(object);
+        Monitor monitor{}; monitor.name = match[1].str(); monitor.virtual_display = monitor.name.rfind("Virtual-", 0) == 0 || object.find("QEMU") != std::string::npos || object.find("Qemu") != std::string::npos; monitor.modes = modes_in(object);
         const std::regex size_re(R"("width"\s*:\s*(\d+).*?"height"\s*:\s*(\d+))");
         if (std::regex_search(object, match, size_re)) { monitor.width = std::stoi(match[1]); monitor.height = std::stoi(match[2]); }
         result.push_back(std::move(monitor));
@@ -61,6 +61,7 @@ std::optional<std::pair<int, int>> edid_size_mm(const std::string& output) {
 }
 
 std::string display_scale(const Monitor& monitor, double fallback) {
+    if (monitor.virtual_display) return std::to_string(fallback);
     const auto physical = edid_size_mm(monitor.name); if (!physical) return std::to_string(fallback);
     int w = monitor.width, h = monitor.height;
     for (const auto& mode : monitor.modes) if (mode.width > w || (mode.width == w && mode.height > h)) { w = mode.width; h = mode.height; }

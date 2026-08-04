@@ -5,7 +5,7 @@
 #include <vector>
 
 struct Mode { int width{}, height{}; double refresh{}; };
-struct Monitor { std::string name; int width{}, height{}; std::vector<Mode> modes; };
+struct Monitor { std::string name; int width{}, height{}; bool virtual_display{}; std::vector<Mode> modes; };
 
 std::vector<Monitor> hyprland_monitors();
 std::optional<std::pair<int, int>> edid_size_mm(const std::string& output);
