@@ -19,9 +19,12 @@ std::vector<std::string> json_objects(const std::string& json) {
     std::vector<std::string> out; int depth = 0; std::size_t begin = 0; bool string = false, escape = false;
     for (std::size_t i = 0; i < json.size(); ++i) {
         const char c = json[i];
-        if (string) { if (escape) escape = false; else if (c == '\\') escape = true; else if (c == '"') string = false; continue; }
-        if (c == '"') string = true; else if (c == '{' && depth++ == 0) begin = i; else if (c == '}' && --depth == 0) out.push_back(json.substr(begin, i - begin + 1));
-    } return out;
+        if (string) { if (escape) escape = false; else if (c == 92) escape = true; else if (c == '"') string = false; continue; }
+        if (c == '"') string = true;
+        else if (c == '{') { if (depth == 0) begin = i; ++depth; }
+        else if (c == '}' && depth > 0) { --depth; if (depth == 0) out.push_back(json.substr(begin, i - begin + 1)); }
+    }
+    return out;
 }
 std::vector<Mode> modes_in(const std::string& object) {
     std::vector<Mode> modes;

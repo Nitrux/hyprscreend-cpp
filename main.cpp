@@ -81,12 +81,15 @@ int main() {
         while (running) {
             const auto state = power_state();
             if (state != "unknown" && state != previous) {
+                bool ready = false;
                 for (const auto& monitor : hyprland_monitors()) if (monitor.name == internal && !monitor.modes.empty()) {
                     auto best = monitor.modes.front();
                     for (const auto& mode : monitor.modes) if (mode.width > best.width || (mode.width == best.width && mode.height > best.height) || (mode.width == best.width && mode.height == best.height && ((state == "ac") ? mode.refresh > best.refresh : mode.refresh < best.refresh))) best = mode;
                     if (lua.upsert_monitor({internal, std::to_string(best.width) + "x" + std::to_string(best.height) + "@" + std::to_string(static_cast<int>(best.refresh)) + "Hz", "auto", display_scale(monitor, fallback)})) hyprland_reload();
+                    ready = true;
                     break;
-                } previous = state;
+                }
+                if (ready) previous = state;
             }
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
