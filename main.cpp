@@ -7,6 +7,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <fstream>
+#include <iomanip>
 #include <filesystem>
 #include <regex>
 #include <sstream>
@@ -34,6 +35,27 @@ bool external_enabled(const std::string& output, const std::string& configured) 
     std::istringstream names(configured); std::string name;
     while (names >> name) if (name == output) return true;
     return false;
+}
+
+Mode selected_mode(const Monitor& monitor, const std::string& state = {}) {
+    if (monitor.virtual_display) return {1440, 900, 59.89};
+
+    auto best = monitor.modes.front();
+    for (const auto& mode : monitor.modes)
+        if (mode.width > best.width || (mode.width == best.width && mode.height > best.height) ||
+            (mode.width == best.width && mode.height == best.height &&
+             (state.empty() ? mode.refresh > best.refresh :
+              ((state == "ac") ? mode.refresh > best.refresh : mode.refresh < best.refresh))))
+            best = mode;
+    return best;
+}
+
+std::string mode_string(const Monitor& monitor, const Mode& mode) {
+    std::ostringstream result;
+    result << mode.width << "x" << mode.height << "@";
+    if (monitor.virtual_display) result << std::fixed << std::setprecision(2) << mode.refresh;
+    else result << static_cast<int>(mode.refresh);
+    return result.str() + "Hz";
 }
 
 bool create_config(const std::filesystem::path& path) {
@@ -83,9 +105,8 @@ int main() {
             if (state != "unknown" && state != previous) {
                 bool ready = false;
                 for (const auto& monitor : hyprland_monitors()) if (monitor.name == internal && !monitor.modes.empty()) {
-                    auto best = monitor.modes.front();
-                    for (const auto& mode : monitor.modes) if (mode.width > best.width || (mode.width == best.width && mode.height > best.height) || (mode.width == best.width && mode.height == best.height && ((state == "ac") ? mode.refresh > best.refresh : mode.refresh < best.refresh))) best = mode;
-                    if (lua.upsert_monitor({internal, std::to_string(best.width) + "x" + std::to_string(best.height) + "@" + std::to_string(static_cast<int>(best.refresh)) + "Hz", "auto", display_scale(monitor, fallback)})) hyprland_reload();
+                    const auto best = selected_mode(monitor, state);
+                    if (lua.upsert_monitor({internal, mode_string(monitor, best), "auto", display_scale(monitor, fallback)})) hyprland_reload();
                     ready = true;
                     break;
                 }
@@ -97,9 +118,9 @@ int main() {
     std::thread external_thread([&] {
         while (running) {
             for (const auto& monitor : hyprland_monitors()) if (monitor.name != internal && external_enabled(monitor.name, external) && !monitor.modes.empty()) {
-                auto best = *std::max_element(monitor.modes.begin(), monitor.modes.end(), [](const Mode& a, const Mode& b) { return std::tie(a.width, a.height, a.refresh) < std::tie(b.width, b.height, b.refresh); });
+                const auto best = selected_mode(monitor);
                 const auto position = lua.position_for(monitor.name).value_or("auto");
-                if (lua.upsert_monitor({monitor.name, std::to_string(best.width) + "x" + std::to_string(best.height) + "@" + std::to_string(static_cast<int>(best.refresh)) + "Hz", position, display_scale(monitor, fallback)})) hyprland_reload();
+                if (lua.upsert_monitor({monitor.name, mode_string(monitor, best), position, display_scale(monitor, fallback)})) hyprland_reload();
             }
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
