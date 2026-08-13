@@ -4,6 +4,7 @@
 #include <atomic>
 #include <algorithm>
 #include <chrono>
+#include <cctype>
 #include <csignal>
 #include <cstdlib>
 #include <fstream>
@@ -37,6 +38,23 @@ bool external_enabled(const std::string& output, const std::string& configured) 
     return false;
 }
 
+bool automatic_enabled(const std::filesystem::path& path) {
+    std::ifstream config(path);
+    if (!config) return true;
+    std::string section, line;
+    const std::regex assignment(R"(^[ \t]*([A-Za-z_]+)[ \t]*=[ \t]*(.*?)[ \t]*$)");
+    while (std::getline(config, line)) {
+        if (line.size() >= 2 && line.front() == '[' && line.back() == ']') { section = line.substr(1, line.size() - 2); continue; }
+        std::smatch match;
+        if (section == "General" && std::regex_match(line, match, assignment) && match[1].str() == "Automatic") {
+            auto value = match[2].str();
+            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            return value == "1" || value == "true" || value == "yes" || value == "on";
+        }
+    }
+    return true;
+}
+
 Mode selected_mode(const Monitor& monitor, const std::string& state = {}) {
     if (monitor.virtual_display) return {1440, 900, 59.89};
 
@@ -65,6 +83,7 @@ bool create_config(const std::filesystem::path& path) {
     std::ofstream out(path);
     if (!out) return false;
     out << "[General]\n"
+        << "Automatic=true\n"
         << "HyprConfig=\"$HOME/.config/hypr/hyprland.lua\"\n"
         << "ScaleFactor=1.0\n\n"
         << "[Screens]\n"
@@ -101,6 +120,7 @@ int main() {
     std::thread internal_thread([&] {
         std::string previous;
         while (running) {
+            if (!automatic_enabled(config_file)) { previous.clear(); std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
             const auto state = power_state();
             if (state != "unknown" && state != previous) {
                 bool ready = false;
@@ -117,6 +137,7 @@ int main() {
     });
     std::thread external_thread([&] {
         while (running) {
+            if (!automatic_enabled(config_file)) { std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
             for (const auto& monitor : hyprland_monitors()) if (monitor.name != internal && external_enabled(monitor.name, external) && !monitor.modes.empty()) {
                 const auto best = selected_mode(monitor);
                 const auto position = lua.position_for(monitor.name).value_or("auto");
